@@ -36,17 +36,14 @@ export default function RegisterPage() {
       if (response.data.success) {
         const data = response.data.data;
         if (data?.session) {
-          localStorage.setItem('access_token', data.session.access_token);
+          // Session dari pendaftaran dicabut; pengguna masuk ulang lewat halaman login.
           try {
-            await authService.logout();
+            await authService.logout(data.session.access_token);
           } catch {
             // Tetap lanjut ke halaman masuk jika session gagal dicabut.
-          } finally {
-            localStorage.removeItem('access_token');
           }
           setSuccessMessage('Pendaftaran berhasil. Silakan masuk dengan akun yang baru dibuat.');
         } else if (data?.email_verification_required) {
-          localStorage.removeItem('access_token');
           setSuccessMessage(`Pendaftaran berhasil. Verifikasi email ${data.email}, lalu masuk ke akun Anda.`);
         } else {
           setErrorMessage('Respons pendaftaran tidak sesuai dengan kontrak API. Coba lagi.');
