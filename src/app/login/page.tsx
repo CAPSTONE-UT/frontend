@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/api/auth';
 import { getApiErrorCode, getApiErrorMessage } from '@/lib/api/errors';
+import { homePathForRole, saveSession } from '@/lib/auth/session';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -22,8 +23,8 @@ export default function LoginPage() {
       if (!response.data.success) {
         setErrorMessage(response.data.message || 'Login tidak berhasil. Periksa kembali data Anda.');
       } else if (response.data.data?.session) {
-        localStorage.setItem('access_token', response.data.data.session.access_token);
-        router.push('/dashboard');
+        saveSession(response.data.data.session);
+        router.push(homePathForRole(response.data.data.user.role));
       } else {
         setErrorMessage('Respons login tidak memuat session yang diperlukan. Coba lagi.');
       }
@@ -44,8 +45,8 @@ export default function LoginPage() {
         <Link href="/login" className="text-lg font-semibold tracking-tight">InvenSMK</Link>
         <div className="max-w-lg pb-10">
           <p className="mb-4 text-sm font-medium text-blue-200">Akun staf sekolah</p>
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight lg:text-5xl">Akses akun sekolah Anda.</h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-blue-100">Masuk untuk melihat profil staf dan status layanan.</p>
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight lg:text-5xl">Kelola inventaris sekolah. Lebih rapi, lebih cepat.</h1>
+          <p className="mt-5 max-w-md text-base leading-7 text-blue-100">Catat peminjaman dan pengembalian barang praktik cukup dengan memindai barcode dari ponsel.</p>
         </div>
         <p className="text-sm text-blue-200">STSI4440 | Kelompok B | Universitas Terbuka</p>
       </section>

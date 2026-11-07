@@ -1,4 +1,4 @@
-﻿# Kontrak API
+# Kontrak API
 
 Dokumen ini menjelaskan kontrak HTTP yang saat ini diimplementasikan oleh School Inventory Backend. Sumber utamanya adalah route, controller, schema validasi, middleware, dan service di `src/`.
 
@@ -17,6 +17,8 @@ Dokumen ini menjelaskan kontrak HTTP yang saat ini diimplementasikan oleh School
 | `POST` | `/api/v1/auth/login` | Tidak | `200` |
 | `POST` | `/api/v1/auth/logout` | Bearer | `200` |
 | `GET` | `/api/v1/auth/profile` | Bearer | `200` |
+| `POST` | `/api/v1/auth/refresh` | Tidak | `200` |
+| | Endpoint inventaris (kategori, barang, peminjaman, pengguna, dashboard) | Bearer + peran | lihat bagian *Endpoint inventaris* |
 
 ## Aturan umum
 
@@ -244,9 +246,39 @@ Mengambil profil personel yang terhubung dengan access token aktif.
 
 **Error yang mungkin:** `401 AUTHENTICATION_ERROR`, `404 NOT_FOUND_ERROR` (profil tidak ditemukan), `503 DEPENDENCY_ERROR`, `500 INTERNAL_ERROR`.
 
+## Endpoint inventaris
+
+Ringkasan endpoint yang dipakai frontend. Skema request/response lengkap ada di Swagger backend
+(`/api-docs/`) dan tipe TypeScript di [`src/types/api.ts`](src/types/api.ts).
+
+Peran: `admin` = Admin, `inventory_officer` = Petugas, `staff` = Peminjam. Peran yang tidak
+diizinkan menerima `403 AUTHORIZATION_ERROR`.
+
+| Method | Path | Peran | Dipakai di |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/refresh` | Publik | Interceptor Axios (refresh otomatis saat 401) |
+| `GET` | `/api/v1/categories` | Semua | `/categories`, filter `/items`, form barang |
+| `POST` / `PUT` / `DELETE` | `/api/v1/categories[/{id}]` | Admin | `/categories` |
+| `GET` | `/api/v1/items` | Admin, Petugas | `/items` (filter `q`, `category_id`, `status`) |
+| `GET` | `/api/v1/items/code/{code}` | Admin, Petugas | `/pindai` |
+| `GET` | `/api/v1/items/{id}` | Admin, Petugas | `/items/labels` |
+| `GET` | `/api/v1/items/{id}/history` | Admin, Petugas | `/items/[id]` |
+| `POST` / `PUT` / `DELETE` | `/api/v1/items[/{id}]` | Admin | `/items`, `/items/[id]` |
+| `GET` | `/api/v1/loans?status=active\|overdue\|returned\|all` | Admin, Petugas | `/loans`, `/loans/history`, dashboard petugas |
+| `GET` | `/api/v1/loans/me` | Semua | `/my-loans` |
+| `POST` | `/api/v1/loans` | Admin, Petugas | `/pindai` (barang tersedia) |
+| `POST` | `/api/v1/loans/{id}/return` | Admin, Petugas | `/pindai`, `/loans`, `/items/[id]` |
+| `GET` | `/api/v1/users` | Admin, Petugas | `/users`, pencarian peminjam di `/pindai` |
+| `POST` / `PUT` | `/api/v1/users[/{id}]` | Admin | `/users` |
+| `GET` | `/api/v1/dashboard/summary` | Admin | `/dashboard` |
+
+Endpoint daftar mengembalikan `data: { items, pagination: { page, limit, total, total_pages } }`.
+`POST /api/v1/loans` yang ditolak karena barang sudah dipinjam mengembalikan `409` dengan
+`error.details.active_loan`.
+
 ## Catatan perilaku
 
 - Body JSON dibatasi hingga 100 KB.
 - Route yang tidak terdaftar menghasilkan `404 NOT_FOUND_ERROR` dengan pesan yang menyebut method dan path.
-- Saat ini tidak ada endpoint refresh token atau endpoint CRUD inventaris yang terpasang pada aplikasi Express.
+- Access token dan refresh token disimpan di `localStorage`. Saat API mengembalikan `401`, frontend mencoba `POST /api/v1/auth/refresh` satu kali, lalu mengulang request; bila gagal, pengguna diarahkan ke halaman masuk.
 - OpenAPI runtime tersedia di `GET /api-docs/openapi.json` dan Swagger UI di `GET /api-docs/` hanya pada environment development. Dokumen ini merangkum route aplikasi, bukan menggantikan spesifikasi OpenAPI runtime.
